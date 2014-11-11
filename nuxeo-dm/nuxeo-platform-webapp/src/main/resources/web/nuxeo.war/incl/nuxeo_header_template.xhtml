@@ -1,0 +1,43 @@
+<div xmlns:h="http://java.sun.com/jsf/html"
+  xmlns:ui="http://java.sun.com/jsf/facelets"
+  xmlns:c="http://java.sun.com/jstl/core"
+  xmlns:nxl="http://nuxeo.org/nxforms/layout">
+
+  <ui:insert name="header_admin_message">
+    <div class="header_admin_messages">
+
+      <c:if test="#{adminMessageActivated}">
+        <div style="adminMessage">
+          <h:outputText value="#{adminMessage}"/>
+        </div>
+      </c:if>
+
+      <ui:include src="nuxeo_header_chromeframe.xhtml" />
+
+    </div>
+  </ui:insert>
+
+  <div class="userServicesBlock">
+
+    <ui:insert name="header_main_tabs">
+      <nxl:widget name="mainTabs" mode="view" value="#{currentDocument}" />
+    </ui:insert>
+
+    <ui:insert name="header_user_menu_actions">
+      <nxl:widget name="userMenuActions" mode="view" value="#{currentDocument}" />
+    </ui:insert>
+
+    <ui:insert name="header_user_actions">
+      <nxl:widget name="userActions" mode="view" value="#{currentDocument}" />
+    </ui:insert>
+
+    <div class="clear"></div>
+
+  </div>
+
+  <ui:insert name="header_search">
+    <nxl:widget name="headerSearch" mode="view" value="#{currentDocument}" />
+  </ui:insert>
+  <div class="clear"></div>
+
+</div>
