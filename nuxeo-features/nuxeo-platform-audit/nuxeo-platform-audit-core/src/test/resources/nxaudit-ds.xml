@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<component name="ds:nxaudit-test">
+  <extension target="org.nuxeo.runtime.datasource" point="datasources">
+    <link name="jdbc/nxaudit-logs" global="jdbc/nuxeo" type="javax.sql.DataSource" />
+  </extension>
+</component>
