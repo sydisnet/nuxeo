@@ -1,0 +1,74 @@
+/*
+ * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ *
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ *
+ * Contributors:
+ *     bstefanescu
+ */
+package org.nuxeo.ecm.automation.server.jaxrs;
+
+import java.util.HashSet;
+import java.util.Set;
+
+import javax.ws.rs.core.Application;
+
+import org.nuxeo.ecm.automation.jaxrs.JsonFactoryProvider;
+import org.nuxeo.ecm.automation.jaxrs.io.JsonAdapterWriter;
+import org.nuxeo.ecm.automation.jaxrs.io.JsonExceptionWriter;
+import org.nuxeo.ecm.automation.jaxrs.io.JsonLoginInfoWriter;
+import org.nuxeo.ecm.automation.jaxrs.io.JsonRecordSetWriter;
+import org.nuxeo.ecm.automation.jaxrs.io.JsonTreeWriter;
+import org.nuxeo.ecm.automation.jaxrs.io.documents.BlobsWriter;
+import org.nuxeo.ecm.automation.jaxrs.io.documents.JsonDocumentListWriter;
+import org.nuxeo.ecm.automation.jaxrs.io.documents.JsonDocumentWriter;
+import org.nuxeo.ecm.automation.jaxrs.io.operations.JsonAutomationInfoWriter;
+import org.nuxeo.ecm.automation.jaxrs.io.operations.JsonOperationWriter;
+import org.nuxeo.ecm.automation.jaxrs.io.operations.JsonRequestReader;
+import org.nuxeo.ecm.automation.jaxrs.io.operations.MultiPartFormRequestReader;
+import org.nuxeo.ecm.automation.jaxrs.io.operations.MultiPartRequestReader;
+import org.nuxeo.ecm.automation.jaxrs.io.operations.UrlEncodedFormRequestReader;
+
+/**
+ * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>
+ */
+public class AutomationModule extends Application {
+
+    @Override
+    public Set<Class<?>> getClasses() {
+        Set<Class<?>> result = new HashSet<Class<?>>();
+        result.add(AutomationResource.class);
+        // need to be stateless since it needs the request member to be
+        // injected
+        result.add(MultiPartRequestReader.class);
+        result.add(MultiPartFormRequestReader.class);
+        return result;
+    }
+
+    protected static Set<Object> setupSingletons() {
+        Set<Object> result = new HashSet<Object>();
+        result.add(new JsonRequestReader());
+        result.add(new JsonExceptionWriter());
+        result.add(new JsonAutomationInfoWriter());
+        result.add(new JsonDocumentWriter());
+        result.add(new JsonDocumentListWriter());
+        result.add(new BlobsWriter());
+        result.add(new JsonLoginInfoWriter());
+        result.add(new JsonOperationWriter());
+        result.add(new UrlEncodedFormRequestReader());
+        result.add(new JsonTreeWriter());
+        result.add(new JsonAdapterWriter());
+        result.add(new JsonRecordSetWriter());
+        result.add(new JsonFactoryProvider());
+        return result;
+    }
+
+    @Override
+    public Set<Object> getSingletons() {
+        return setupSingletons();
+    }
+
+}
