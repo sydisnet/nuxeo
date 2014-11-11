@@ -1,0 +1,55 @@
+/*
+Specific styles for the Search View
+=Grid -> custom styles for the main grid
+author: lkemen@nuxeo.com
+*/
+
+/* =Grid */
+.gridBox {
+  padding: .5em }
+
+.nxSearchForm {
+  font-size: .8em;
+  background-color: #fff;
+  width: 19% }
+
+.nxSearchForm .containerSubWidget {
+  margin: 0 }
+
+.nxSearchResults {
+  background-color: "neutral.lighter (__FLAVOR__ background)";
+  padding: 1em 3em 3em;
+  min-height: 800px;
+  width: 81% }
+
+.nxSearchResults .containerWidgetPanel {
+  padding: 0 }
+
+.searchFilterActions .horizontalAction:first-child .button {
+  border-radius: 3px 0 0 3px;
+  border-right: none }
+
+.searchFilterActions .horizontalAction:last-child .button {
+  border-radius: 0 3px 3px 0 }
+
+/* Search Column */
+.nxSearchForm .searchesSelector select {
+  border: none }
+
+.searchesSelector {
+  margin: 0 -0.5em;
+  padding: 1em .5em;
+  background-color: #213f7d }
+
+/* Main content */
+.contentViewTitle {
+  border: none }
+
+.bubbleBox {
+  background-color: #fff;
+  display: inline-block;
+  margin: 0 .5em 1.2em;
+  width: 18.1em }
+
+div.detail {
+  clear: both }
