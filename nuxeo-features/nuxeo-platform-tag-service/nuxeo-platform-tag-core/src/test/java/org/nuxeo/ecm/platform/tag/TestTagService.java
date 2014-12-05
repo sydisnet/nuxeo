@@ -36,6 +36,7 @@ import org.junit.runner.RunWith;
 import org.nuxeo.ecm.core.api.ClientException;
 import org.nuxeo.ecm.core.api.CoreSession;
 import org.nuxeo.ecm.core.api.DocumentModel;
+import org.nuxeo.ecm.core.api.DocumentModelList;
 import org.nuxeo.ecm.core.api.DocumentRef;
 import org.nuxeo.ecm.core.api.LifeCycleConstants;
 import org.nuxeo.ecm.core.event.EventService;
@@ -47,6 +48,7 @@ import org.nuxeo.ecm.core.test.CoreFeature;
 import org.nuxeo.ecm.core.test.TransactionalFeature;
 import org.nuxeo.ecm.core.test.annotations.Granularity;
 import org.nuxeo.ecm.core.test.annotations.RepositoryConfig;
+import org.nuxeo.ecm.core.trash.TrashService;
 import org.nuxeo.ecm.platform.api.ws.DocumentProperty;
 import org.nuxeo.ecm.platform.api.ws.DocumentSnapshot;
 import org.nuxeo.ecm.platform.ws.NuxeoRemotingBean;
@@ -55,6 +57,7 @@ import org.nuxeo.runtime.test.runner.Deploy;
 import org.nuxeo.runtime.test.runner.Features;
 import org.nuxeo.runtime.test.runner.FeaturesRunner;
 import org.nuxeo.runtime.test.runner.LocalDeploy;
+import org.nuxeo.runtime.test.runner.RandomBug;
 import org.nuxeo.runtime.transaction.TransactionHelper;
 
 import com.google.inject.Inject;
@@ -74,6 +77,9 @@ public class TestTagService {
 
     @Inject
     protected TagService tagService;
+
+    @Inject
+    protected TrashService trashService;
 
     // Oracle fails if we do too many connections in a short time, sleep
     // here to prevent this.
@@ -634,5 +640,56 @@ public class TestTagService {
         assertEquals(28, cloud.get(1).getWeight());
         assertEquals(65, cloud.get(2).getWeight());
         assertEquals(100, cloud.get(3).getWeight());
+    }
+
+    @Test
+    @RandomBug.Repeat(issue = "NXP-16154")
+    public void testTag() throws Exception {
+        System.out.println("testTag");
+        buildDocWithProxiesAndTags();
+
+        TransactionHelper.commitOrRollbackTransaction();
+        Framework.getService(EventService.class).waitForAsyncCompletion();
+        TransactionHelper.startTransaction();
+
+        String nxql = "SELECT * FROM Document, Relation order by ecm:uuid";
+        DocumentModelList docs = session.query(nxql);
+
+        // Due NXP-16154 this gives a random number of docs
+        assertEquals(getDigest(docs), 21, docs.totalSize());
+    }
+
+    private void buildDocWithProxiesAndTags() {
+        DocumentModel folder = session.createDocumentModel("/", "section",
+                "Folder");
+        session.createDocument(folder);
+        folder = session.saveDocument(folder);
+        session.save();
+        for (int i = 0; i < 5; i++) {
+            DocumentModel doc = session.createDocumentModel("/", "testDoc" + i,
+                    "File");
+            doc.setPropertyValue("dc:title", "TestMe" + i);
+            doc = session.createDocument(doc);
+            session.saveDocument(doc);
+            tagService.tag(session, doc.getId(), "mytag" + i, "Administrator");
+            DocumentModel proxy = session.publishDocument(doc, folder);
+            session.save();
+            trashService.trashDocuments(Arrays.asList(doc));
+            session.save();
+        }
+    }
+
+    protected String getDigest(DocumentModelList docs) throws Exception {
+        StringBuilder sb = new StringBuilder();
+        for (DocumentModel doc : docs) {
+            String nameOrTitle = doc.getName();
+            if (nameOrTitle == null || nameOrTitle.isEmpty()) {
+                nameOrTitle = doc.getTitle();
+            }
+            sb.append(String.format("%s %s proxy:%s %s", doc.getId(),
+                    doc.getType(), doc.isProxy(), nameOrTitle));
+            sb.append("\n");
+        }
+        return sb.toString();
     }
 }
