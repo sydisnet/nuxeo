@@ -49,7 +49,7 @@ import org.nuxeo.ecm.core.api.DocumentModel;
 import org.nuxeo.ecm.core.work.api.WorkManager;
 import org.nuxeo.elasticsearch.api.ElasticSearchIndexing;
 import org.nuxeo.elasticsearch.commands.IndexingCommand;
-import org.nuxeo.elasticsearch.commands.IndexingCommand.Name;
+import org.nuxeo.elasticsearch.commands.IndexingCommand.Type;
 import org.nuxeo.elasticsearch.work.ScrollingIndexingWorker;
 import org.nuxeo.runtime.api.Framework;
 import org.nuxeo.runtime.metrics.MetricsService;
@@ -121,7 +121,7 @@ public class ElasticSearchIndexingImpl implements ElasticSearchIndexing {
     void processBulkDeleteCommands(List<IndexingCommand> cmds) {
         // Can be optimized with a single delete by query
         for (IndexingCommand cmd : cmds) {
-            if (cmd.getName() == IndexingCommand.Name.DELETE) {
+            if (cmd.getType() == Type.DELETE) {
                 Context stopWatch = deleteTimer.time();
                 try {
                     processDeleteCommand(cmd);
@@ -135,8 +135,7 @@ public class ElasticSearchIndexingImpl implements ElasticSearchIndexing {
     void processBulkIndexCommands(List<IndexingCommand> cmds) throws ClientException {
         BulkRequestBuilder bulkRequest = esa.getClient().prepareBulk();
         for (IndexingCommand cmd : cmds) {
-            String id = cmd.getDocId();
-            if (IndexingCommand.UNKOWN_DOCUMENT_ID.equals(id) || cmd.getName() == Name.DELETE) {
+            if (cmd.getType() == Type.DELETE) {
                 continue;
             }
             if (log.isTraceEnabled()) {
@@ -168,15 +167,8 @@ public class ElasticSearchIndexingImpl implements ElasticSearchIndexing {
 
     @Override
     public void indexNow(IndexingCommand cmd) throws ClientException {
-        if (cmd.getTargetDocument() == null && IndexingCommand.UNKOWN_DOCUMENT_ID.equals(cmd.getDocId())) {
-            esa.totalCommandProcessed.addAndGet(1);
-            return;
-        }
         esa.totalCommandRunning.incrementAndGet();
-        if (log.isTraceEnabled()) {
-            log.trace("Sending indexing request to Elasticsearch: " + cmd.toString());
-        }
-        if (cmd.getName() == Name.DELETE) {
+        if (cmd.getType() == Type.DELETE) {
             Context stopWatch = deleteTimer.time();
             try {
                 processDeleteCommand(cmd);
@@ -198,11 +190,6 @@ public class ElasticSearchIndexingImpl implements ElasticSearchIndexing {
     }
 
     void processIndexCommand(IndexingCommand cmd) {
-        String docId = cmd.getDocId();
-        if (IndexingCommand.UNKOWN_DOCUMENT_ID.equals(docId) || cmd.getTargetDocument() == null) {
-            log.warn("Skipping cmd because targetDocument is null " + cmd);
-            return;
-        }
         IndexRequestBuilder request;
         try {
             request = buildEsIndexingRequest(cmd);
@@ -212,7 +199,7 @@ public class ElasticSearchIndexingImpl implements ElasticSearchIndexing {
         }
         if (log.isDebugEnabled()) {
             log.debug(String.format("Index request: curl -XPUT 'http://localhost:9200/%s/%s/%s' -d '%s'",
-                    esa.getRepositoryIndex(cmd.getRepository()), DOC_TYPE, docId, request.request().toString()));
+                    esa.getRepositoryIndex(cmd.getRepository()), DOC_TYPE, cmd.getDocId(), request.request().toString()));
         }
         request.execute().actionGet();
     }
@@ -283,7 +270,12 @@ public class ElasticSearchIndexingImpl implements ElasticSearchIndexing {
     }
 
     IndexRequestBuilder buildEsIndexingRequest(IndexingCommand cmd) throws ClientException {
-        DocumentModel doc = cmd.getTargetDocument();
+        DocumentModel doc;
+        try {
+            doc = cmd.getTargetDocument();
+        } catch (IllegalStateException e) {
+            throw new ClientException("Unable to get target document", e);
+        }
         try {
             JsonFactory factory = new JsonFactory();
             XContentBuilder builder = jsonBuilder();
