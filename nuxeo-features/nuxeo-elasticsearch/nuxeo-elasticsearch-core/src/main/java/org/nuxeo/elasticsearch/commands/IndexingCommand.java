@@ -141,9 +141,10 @@ public class IndexingCommand implements Serializable {
     }
 
     /**
-     * Return the document, the command must be attached to a session.
+     * Return the document or null if it does not exists anymore.
      *
-     * @throws java.lang.IllegalStateException if there is no session or the document does not exists
+     * @throws java.lang.IllegalStateException if there is no session attached
+     * @throws org.nuxeo.ecm.core.api.ClientException if the document can not be loaded
      */
     public DocumentModel getTargetDocument() {
         CoreSession session = null;
@@ -153,19 +154,11 @@ public class IndexingCommand implements Serializable {
         if (session == null) {
             throw new IllegalStateException("Command is not attached to a valid session: " + this);
         }
-        try {
-            return getTargetDocument(session);
-        } catch (ClientException e) {
-            throw new IllegalArgumentException("Can not load document for cmd:" + this, e);
-        }
-    }
-
-    protected DocumentModel getTargetDocument(CoreSession session) {
         IdRef idref = new IdRef(uid);
         if (!session.exists(idref)) {
-            // Doc was deleted : no way we can fetch it
-            throw new IllegalStateException("Can not get the target document because it does not exists anymore: "
-                    + this);
+                // Doc was deleted : no way we can fetch it
+            log.info("Can not get target document, because it does not exists anymore: " + this);
+            return null;
         }
         return session.getDocument(idref);
     }
