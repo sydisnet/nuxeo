@@ -17,6 +17,7 @@
 
 package org.nuxeo.elasticsearch.work;
 
+import org.nuxeo.ecm.core.api.ClientException;
 import org.nuxeo.ecm.core.api.DocumentModel;
 import org.nuxeo.ecm.core.api.DocumentModelIterator;
 import org.nuxeo.ecm.core.work.api.Work;
@@ -47,6 +48,10 @@ public class ChildrenIndexingWorker extends AbstractIndexingWorker implements Wo
     @Override
     protected void doIndexingWork(ElasticSearchIndexing esi, IndexingCommand cmd) {
         DocumentModel doc = cmd.getTargetDocument();
+        if (doc == null) {
+            // doc has been deleted
+            return;
+        }
         DocumentModelIterator iter = session.getChildrenIterator(doc.getRef());
         while (iter.hasNext()) {
             // Add a session save to process cache invalidation
