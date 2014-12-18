@@ -115,7 +115,7 @@ public class ElasticSearchManager {
             log.warn(String.format("Try to remove %s and its children from %s repository index", rootId, repositoryName));
             String jsonCmd = String.format(JSON_DELETE_CMD, rootId, repositoryName);
             IndexingCommand rmCmd = IndexingCommand.fromJSON(jsonCmd);
-            esi.indexNow(rmCmd);
+            esi.indexNonRecursive(rmCmd);
 
             DocumentRef ref = new IdRef(rootId);
             if (session.exists(ref)) {
@@ -123,7 +123,7 @@ public class ElasticSearchManager {
                 log.warn(String.format("Re-indexing document: %s and its children on repository: %s", doc,
                         repositoryName));
                 IndexingCommand cmd = new IndexingCommand(doc, false, true);
-                esi.scheduleIndexing(cmd);
+                esi.index(cmd);
             }
         }
     }

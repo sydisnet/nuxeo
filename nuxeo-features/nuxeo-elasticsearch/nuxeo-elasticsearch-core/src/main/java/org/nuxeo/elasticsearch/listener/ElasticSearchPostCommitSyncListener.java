@@ -57,7 +57,7 @@ public class ElasticSearchPostCommitSyncListener implements PostCommitEventListe
             ElasticSearchIndexing esi = Framework.getLocalService(ElasticSearchIndexing.class);
             try {
                 attachSessions(sessions, cmds);
-                esi.indexNow(cmds);
+                esi.indexNonRecursive(cmds);
             } finally {
                 closeSessions(sessions);
             }

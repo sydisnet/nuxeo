@@ -19,7 +19,6 @@ package org.nuxeo.elasticsearch;
 
 import static org.nuxeo.elasticsearch.ElasticSearchConstants.ES_ENABLED_PROPERTY;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -27,6 +26,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import javax.transaction.Transaction;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -37,8 +38,6 @@ import org.nuxeo.ecm.core.api.CoreSession;
 import org.nuxeo.ecm.core.api.DocumentModelList;
 import org.nuxeo.ecm.core.api.SortInfo;
 import org.nuxeo.ecm.core.api.UnrestrictedSessionRunner;
-import org.nuxeo.ecm.core.event.Event;
-import org.nuxeo.ecm.core.event.EventProducer;
 import org.nuxeo.ecm.core.repository.RepositoryService;
 import org.nuxeo.ecm.core.work.api.WorkManager;
 import org.nuxeo.elasticsearch.api.ElasticSearchAdmin;
@@ -184,7 +183,7 @@ public class ElasticSearchComponent extends DefaultComponent implements ElasticS
                         @Override
                         public void run() throws ClientException {
                             cmd.attach(session);
-                            esi.indexNow(cmd);
+                            esi.indexNonRecursive(cmd);
                         }
                     }.runUnrestricted();
                 }
@@ -271,53 +270,12 @@ public class ElasticSearchComponent extends DefaultComponent implements ElasticS
     // ES Indexing =============================================================
 
     @Override
-    public void scheduleIndexing(IndexingCommand cmd) throws ClientException {
-        String id = cmd.getDocId();
-        if (isAlreadyScheduled(cmd)) {
-            if (log.isDebugEnabled()) {
-                log.debug("Schedule indexing command, cancelled because already scheduled: " + cmd);
-            }
-            return;
-        }
-        if (cmd.isSync()) {
-            if (log.isDebugEnabled()) {
-                log.debug("Schedule indexing command Sync PostCommit: " + cmd);
-            }
-            schedulePostCommitIndexing(cmd);
-        } else {
-            if (log.isDebugEnabled()) {
-                log.debug("Schedule indexing command Async: " + cmd.toString());
-            }
-            WorkManager wm = Framework.getLocalService(WorkManager.class);
-            IndexingWorker idxWork = new IndexingWorker(cmd);
-            // will be scheduled after the commit and only if the tx is not
-            // rollbacked
-            wm.schedule(idxWork, true);
-        }
-        pendingCommands.add(cmd.getId());
-        pendingWork.add(cmd.getWorkKey());
-    }
-
-    void schedulePostCommitIndexing(IndexingCommand cmd) throws ClientException {
-        EventProducer evtProducer = Framework.getLocalService(EventProducer.class);
-        Event indexingEvent = null;
-        try {
-            indexingEvent = cmd.asIndexingEvent();
-        } catch (IOException e) {
-            throw ClientException.wrap(e);
-        }
-        if (indexingEvent != null) {
-            evtProducer.fireEvent(indexingEvent);
-        }
-    }
-
-    @Override
     public boolean isAlreadyScheduled(IndexingCommand cmd) {
         return pendingCommands.contains(cmd.getId()) || pendingWork.contains(cmd.getWorkKey());
     }
 
     @Override
-    public void indexNow(IndexingCommand cmd) throws ClientException {
+    public void indexNonRecursive(IndexingCommand cmd) throws ClientException {
         if (!isReady()) {
             stackedCommands.add(cmd);
             if (log.isDebugEnabled()) {
@@ -329,11 +287,11 @@ public class ElasticSearchComponent extends DefaultComponent implements ElasticS
             log.debug("Process indexing command: " + cmd);
         }
         markCommandInProgress(cmd);
-        esi.indexNow(cmd);
+        esi.indexNonRecursive(cmd);
     }
 
     @Override
-    public void indexNow(List<IndexingCommand> cmds) throws ClientException {
+    public void indexNonRecursive(List<IndexingCommand> cmds) throws ClientException {
         if (!isReady()) {
             if (log.isDebugEnabled()) {
                 log.debug("Delaying indexing commands: Waiting for Index to be initialized.");
@@ -345,7 +303,73 @@ public class ElasticSearchComponent extends DefaultComponent implements ElasticS
             log.debug("Process indexing commands: " + cmds);
         }
         markCommandInProgress(cmds);
-        esi.indexNow(cmds);
+        esi.indexNonRecursive(cmds);
+    }
+
+    @Override
+    public void index(List<IndexingCommand> cmds) {
+        WorkManager wm = Framework.getLocalService(WorkManager.class);
+        List<IndexingCommand> syncCommands = new ArrayList<>();
+        List<IndexingCommand> asyncCommands = new ArrayList<>();
+        for (IndexingCommand cmd : cmds) {
+            if (isAlreadyScheduled(cmd)) {
+                if (log.isDebugEnabled()) {
+                    log.debug("Schedule indexing command, cancelled because already scheduled: " + cmd);
+                }
+                continue;
+            }
+            pendingCommands.add(cmd.getId());
+            pendingWork.add(cmd.getWorkKey());
+            if (cmd.isSync()) {
+                syncCommands.add(cmd);
+            } else {
+                asyncCommands.add(cmd);
+            }
+        }
+        // TODO implement multi repositories
+        if (!syncCommands.isEmpty()) {
+            String repositoryName = syncCommands.get(0).getRepository();
+            Transaction transaction = TransactionHelper.suspendTransaction();
+            IndexingWorker idxWork = new IndexingWorker(repositoryName, syncCommands);
+            try {
+                idxWork.run();
+            } finally {
+                if (transaction != null) {
+                    TransactionHelper.resumeTransaction(transaction);
+                }
+            }
+        }
+        if (!asyncCommands.isEmpty()) {
+            String repositoryName = asyncCommands.get(0).getRepository();
+            IndexingWorker idxWork = new IndexingWorker(repositoryName, asyncCommands);
+            wm.schedule(idxWork, true);
+        }
+    }
+
+    @Override
+    public void index(IndexingCommand cmd) {
+        WorkManager wm = Framework.getLocalService(WorkManager.class);
+        if (isAlreadyScheduled(cmd)) {
+            if (log.isDebugEnabled()) {
+                log.debug("Schedule indexing command, cancelled because already scheduled: " + cmd);
+            }
+            return;
+        }
+        pendingCommands.add(cmd.getId());
+        pendingWork.add(cmd.getWorkKey());
+        IndexingWorker idxWork = new IndexingWorker(cmd);
+        if (cmd.isSync()) {
+            Transaction transaction = TransactionHelper.suspendTransaction();
+            try {
+                idxWork.run();
+            } finally {
+                if (transaction != null) {
+                    TransactionHelper.resumeTransaction(transaction);
+                }
+            }
+        } else {
+            wm.schedule(idxWork, true);
+        }
     }
 
     @Override
