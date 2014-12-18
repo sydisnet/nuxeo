@@ -83,7 +83,7 @@ public class ElasticSearchIndexingImpl implements ElasticSearchIndexing {
     }
 
     @Override
-    public void indexNow(List<IndexingCommand> cmds) throws ClientException {
+    public void indexNonRecursive(List<IndexingCommand> cmds) throws ClientException {
         // we count all commands even those coming from async children worker
         // which are not scheduled
         int nbCommands = cmds.size();
@@ -102,6 +102,16 @@ public class ElasticSearchIndexingImpl implements ElasticSearchIndexing {
             esa.totalCommandRunning.addAndGet(-nbCommands);
         }
         esa.totalCommandProcessed.addAndGet(nbCommands);
+    }
+
+    @Override
+    public void index(List<IndexingCommand> cmds) {
+        throw new UnsupportedOperationException("Not implemented");
+    }
+
+    @Override
+    public void index(IndexingCommand cmds) {
+        throw new UnsupportedOperationException("Not implemented");
     }
 
     @Override
@@ -169,7 +179,7 @@ public class ElasticSearchIndexingImpl implements ElasticSearchIndexing {
     }
 
     @Override
-    public void indexNow(IndexingCommand cmd) throws ClientException {
+    public void indexNonRecursive(IndexingCommand cmd) throws ClientException {
         esa.totalCommandRunning.incrementAndGet();
         if (cmd.getType() == Type.DELETE) {
             Context stopWatch = deleteTimer.time();
@@ -301,12 +311,6 @@ public class ElasticSearchIndexingImpl implements ElasticSearchIndexing {
         } catch (IOException e) {
             throw new ClientException("Unable to create index request for Document " + cmd.getDocId(), e);
         }
-    }
-
-    @Override
-    public void scheduleIndexing(IndexingCommand cmd) throws ClientException {
-        // impl of scheduling is left to the ESService
-        throw new UnsupportedOperationException("Not implemented");
     }
 
     @Override

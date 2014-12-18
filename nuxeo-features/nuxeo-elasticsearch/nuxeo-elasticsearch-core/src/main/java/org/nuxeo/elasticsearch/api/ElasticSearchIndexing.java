@@ -31,13 +31,6 @@ import org.nuxeo.elasticsearch.commands.IndexingCommand;
 public interface ElasticSearchIndexing {
 
     /**
-     * Schedule indexing command and return. Recursive indexing will be handled in async.
-     *
-     * @since 5.9.3
-     */
-    void scheduleIndexing(IndexingCommand cmd) throws ClientException;
-
-    /**
      * {true} if a command has already been submitted for indexing.
      *
      * @since 5.9.5
@@ -47,17 +40,33 @@ public interface ElasticSearchIndexing {
     /**
      * Ask to process the {@link IndexingCommand}. Recursive indexing is not taken in account.
      *
-     * @since 5.9.3
+     * @since 7.1
      */
-    void indexNow(IndexingCommand cmd) throws ClientException;
+    void indexNonRecursive(IndexingCommand cmd) throws ClientException;
 
     /**
      * Ask to process a list of {@link IndexingCommand}. Commands list will be processed in bulk mode. Recursive
      * indexing is not taken in account.
      *
-     * @since 5.9.3
+     * Indexation is done in the current thread.
+     *
+     * @since 7.1
      */
-    void indexNow(List<IndexingCommand> cmds) throws ClientException;
+    void indexNonRecursive(List<IndexingCommand> cmds) throws ClientException;
+
+    /**
+     * Ask to process the {@link IndexingCommand}.
+     *
+     * @since 7.1
+     */
+    void index(IndexingCommand cmd);
+
+    /**
+     * Ask to process a list of {@link IndexingCommand}. Commands list will be processed in bulk mode.
+     *
+     * @since 7.1
+     */
+    void index(List<IndexingCommand> cmds);
 
     /**
      * Reindex documents matching the NXQL query,
