@@ -179,7 +179,7 @@ public class ElasticSearchComponent extends DefaultComponent implements ElasticS
             }
             try {
                 for (final IndexingCommand cmd : stackedCommands) {
-                    new UnrestrictedSessionRunner(cmd.getRepository()) {
+                    new UnrestrictedSessionRunner(cmd.getRepositoryName()) {
                         @Override
                         public void run() throws ClientException {
                             cmd.attach(session);
@@ -288,6 +288,9 @@ public class ElasticSearchComponent extends DefaultComponent implements ElasticS
         }
         markCommandInProgress(cmd);
         esi.indexNonRecursive(cmd);
+        if (cmd.isSync()) {
+            esa.refresh();
+        }
     }
 
     @Override
@@ -304,6 +307,16 @@ public class ElasticSearchComponent extends DefaultComponent implements ElasticS
         }
         markCommandInProgress(cmds);
         esi.indexNonRecursive(cmds);
+        refreshIfNeeded(cmds);
+    }
+
+    protected void refreshIfNeeded(List<IndexingCommand> cmds) {
+        for (IndexingCommand cmd: cmds) {
+            if (cmd.isSync()) {
+                esa.refresh();
+                return;
+            }
+        }
     }
 
     @Override
@@ -314,7 +327,7 @@ public class ElasticSearchComponent extends DefaultComponent implements ElasticS
         for (IndexingCommand cmd : cmds) {
             if (isAlreadyScheduled(cmd)) {
                 if (log.isDebugEnabled()) {
-                    log.debug("Schedule indexing command, cancelled because already scheduled: " + cmd);
+                    log.debug("Cancel indexing command, because it is already scheduled: " + cmd);
                 }
                 continue;
             }
@@ -328,7 +341,7 @@ public class ElasticSearchComponent extends DefaultComponent implements ElasticS
         }
         // TODO implement multi repositories
         if (!syncCommands.isEmpty()) {
-            String repositoryName = syncCommands.get(0).getRepository();
+            String repositoryName = syncCommands.get(0).getRepositoryName();
             Transaction transaction = TransactionHelper.suspendTransaction();
             IndexingWorker idxWork = new IndexingWorker(repositoryName, syncCommands);
             try {
@@ -340,7 +353,7 @@ public class ElasticSearchComponent extends DefaultComponent implements ElasticS
             }
         }
         if (!asyncCommands.isEmpty()) {
-            String repositoryName = asyncCommands.get(0).getRepository();
+            String repositoryName = asyncCommands.get(0).getRepositoryName();
             IndexingWorker idxWork = new IndexingWorker(repositoryName, asyncCommands);
             wm.schedule(idxWork, true);
         }

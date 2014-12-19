@@ -20,7 +20,6 @@ package org.nuxeo.elasticsearch.api;
 
 import java.util.List;
 
-import org.nuxeo.ecm.core.api.ClientException;
 import org.nuxeo.elasticsearch.commands.IndexingCommand;
 
 /**
@@ -31,38 +30,21 @@ import org.nuxeo.elasticsearch.commands.IndexingCommand;
 public interface ElasticSearchIndexing {
 
     /**
-     * {true} if a command has already been submitted for indexing.
+     * Process the {@link IndexingCommand}
      *
-     * @since 5.9.5
-     */
-    boolean isAlreadyScheduled(IndexingCommand cmd);
-
-    /**
-     * Ask to process the {@link IndexingCommand}. Recursive indexing is not taken in account.
-     *
-     * @since 7.1
-     */
-    void indexNonRecursive(IndexingCommand cmd) throws ClientException;
-
-    /**
-     * Ask to process a list of {@link IndexingCommand}. Commands list will be processed in bulk mode. Recursive
-     * indexing is not taken in account.
-     *
-     * Indexation is done in the current thread.
-     *
-     * @since 7.1
-     */
-    void indexNonRecursive(List<IndexingCommand> cmds) throws ClientException;
-
-    /**
-     * Ask to process the {@link IndexingCommand}.
+     * <p>
+     * Synchronous command are processed in a new transaction. index is refreshed so the
+     * document is searchable immediately.
+     * Recursive command are always done asynchronously using async worker.
+     * </p>
      *
      * @since 7.1
      */
     void index(IndexingCommand cmd);
 
     /**
-     * Ask to process a list of {@link IndexingCommand}. Commands list will be processed in bulk mode.
+     * Same as {@link ElasticSearchIndexing#index(org.nuxeo.elasticsearch.commands.IndexingCommand)} but use a bulk
+     * request.
      *
      * @since 7.1
      */
@@ -74,5 +56,33 @@ public interface ElasticSearchIndexing {
      * @since 7.1
      */
     void reindex(String repositoryName, String nxql);
+
+    /**
+     * {true} if a command has already been submitted for indexing.
+     *
+     * @since 5.9.5
+     */
+    boolean isAlreadyScheduled(IndexingCommand cmd);
+
+    /**
+     * Process the {@link IndexingCommand}.
+     * <p>
+     * Send indexing command to Elasticsearch, if the command is synchronous the index is refreshed so the
+     * document is searchable immediately. Recursive indexing is not taken in account except for deletion. This is not a
+     * transactional operation, a rollback will not discard the executed commands.
+     * </p>
+     *
+     * @since 7.1
+     */
+    void indexNonRecursive(IndexingCommand cmd);
+
+    /**
+     * Same as {@link ElasticSearchIndexing#indexNonRecursive(org.nuxeo.elasticsearch.commands.IndexingCommand)} but
+     * process the list command using a bulk request.</p>
+     *
+     * @since 7.1
+     */
+    void indexNonRecursive(List<IndexingCommand> cmds);
+
 
 }
