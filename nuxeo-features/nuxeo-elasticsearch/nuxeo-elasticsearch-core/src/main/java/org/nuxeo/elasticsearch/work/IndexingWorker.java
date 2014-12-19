@@ -19,8 +19,10 @@ package org.nuxeo.elasticsearch.work;
 
 import java.util.List;
 
+import org.elasticsearch.common.util.concurrent.EsAbortPolicy;
 import org.nuxeo.ecm.core.work.api.Work;
 import org.nuxeo.ecm.core.work.api.WorkManager;
+import org.nuxeo.elasticsearch.api.ElasticSearchAdmin;
 import org.nuxeo.elasticsearch.api.ElasticSearchIndexing;
 import org.nuxeo.elasticsearch.commands.IndexingCommand;
 import org.nuxeo.runtime.api.Framework;
@@ -33,8 +35,6 @@ import org.nuxeo.runtime.api.Framework;
 public class IndexingWorker extends AbstractIndexingWorker implements Work {
 
     private static final long serialVersionUID = 1L;
-
-    private String cmdsDigest;
 
     public IndexingWorker(IndexingCommand cmd) {
         super(cmd);
@@ -79,6 +79,6 @@ public class IndexingWorker extends AbstractIndexingWorker implements Work {
         for (IndexingCommand cmd : cmds) {
             ret += " " + cmd.getId();
         }
-        return cmdsDigest;
+        return ret;
     }
 }

@@ -48,7 +48,7 @@ public class ElasticSearchPostCommitSyncListener implements PostCommitEventListe
                     if (key.startsWith(IndexingCommand.PREFIX)) {
                         IndexingCommand cmd = IndexingCommand.fromJSON((String) props.get(key));
                         cmds.add(cmd);
-                        sessions.put(cmd.getRepository(), null);
+                        sessions.put(cmd.getRepositoryName(), null);
                     }
                 }
             }
@@ -79,7 +79,7 @@ public class ElasticSearchPostCommitSyncListener implements PostCommitEventListe
             sessions.put(repo, CoreInstance.openCoreSession(repo));
         }
         for (IndexingCommand cmd : cmds) {
-            cmd.attach(sessions.get(cmd.getRepository()));
+            cmd.attach(sessions.get(cmd.getRepositoryName()));
         }
     }
 

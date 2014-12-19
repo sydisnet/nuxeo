@@ -39,7 +39,7 @@ public abstract class AbstractIndexingWorker extends BaseIndexingWorker {
         super();
         this.cmds = new ArrayList<>(1);
         this.cmds.add(cmd);
-        this.repositoryName = cmd.getRepository();
+        this.repositoryName = cmd.getRepositoryName();
         this.docId = cmd.getDocId();
     }
 
