@@ -132,6 +132,9 @@ public class ElasticSearchInlineListener extends IndexingCommandsStacker impleme
 
     @Override
     public void afterCompletion(int status) {
+        if (getAllCommands().isEmpty()) {
+            return;
+        }
         try {
             if (Status.STATUS_MARKED_ROLLBACK == status || Status.STATUS_ROLLEDBACK == status) {
                 return;
