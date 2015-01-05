@@ -320,7 +320,7 @@ public class ElasticSearchComponent extends DefaultComponent implements ElasticS
     }
 
     @Override
-    public void index(List<IndexingCommand> cmds) {
+    public void runIndexingWorker(List<IndexingCommand> cmds) {
         WorkManager wm = Framework.getLocalService(WorkManager.class);
         List<IndexingCommand> syncCommands = new ArrayList<>();
         List<IndexingCommand> asyncCommands = new ArrayList<>();
@@ -355,39 +355,20 @@ public class ElasticSearchComponent extends DefaultComponent implements ElasticS
         if (!asyncCommands.isEmpty()) {
             String repositoryName = asyncCommands.get(0).getRepositoryName();
             IndexingWorker idxWork = new IndexingWorker(repositoryName, asyncCommands);
-            wm.schedule(idxWork, true);
+            wm.schedule(idxWork, false);
         }
     }
 
     @Override
-    public void index(IndexingCommand cmd) {
-        WorkManager wm = Framework.getLocalService(WorkManager.class);
-        if (isAlreadyScheduled(cmd)) {
-            if (log.isDebugEnabled()) {
-                log.debug("Schedule indexing command, cancelled because already scheduled: " + cmd);
-            }
-            return;
-        }
-        pendingCommands.add(cmd.getId());
-        pendingWork.add(cmd.getWorkKey());
-        IndexingWorker idxWork = new IndexingWorker(cmd);
-        if (cmd.isSync()) {
-            Transaction transaction = TransactionHelper.suspendTransaction();
-            try {
-                idxWork.run();
-            } finally {
-                if (transaction != null) {
-                    TransactionHelper.resumeTransaction(transaction);
-                }
-            }
-        } else {
-            wm.schedule(idxWork, true);
-        }
+    public void runIndexingWorker(IndexingCommand cmd) {
+        List<IndexingCommand> cmds = new ArrayList<>(1);
+        cmds.add(cmd);
+        runIndexingWorker(cmds);
     }
 
     @Override
-    public void reindex(String repositoryName, String nxql) {
-        esi.reindex(repositoryName, nxql);
+    public void runReindexingWorker(String repositoryName, String nxql) {
+        esi.runReindexingWorker(repositoryName, nxql);
     }
 
     // ES Search ===============================================================

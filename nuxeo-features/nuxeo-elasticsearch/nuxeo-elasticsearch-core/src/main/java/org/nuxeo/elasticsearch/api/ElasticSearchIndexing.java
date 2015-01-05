@@ -30,32 +30,33 @@ import org.nuxeo.elasticsearch.commands.IndexingCommand;
 public interface ElasticSearchIndexing {
 
     /**
-     * Process the {@link IndexingCommand}
-     *
+     * Run a worker to process the {@link IndexingCommand}, the target document must be committed.
      * <p>
-     * Synchronous command are processed in a new transaction. index is refreshed so the
-     * document is searchable immediately.
-     * Recursive command are always done asynchronously using async worker.
+     * Asynchronous command schedules an indexing job and return.
+     * </p>
+     * <p>
+     * Synchronous command execute an indexing job using a new Tx then refresh the index so the document is searchable
+     * immediately. if the command is also recursive the children are processed asynchronously.
      * </p>
      *
      * @since 7.1
      */
-    void index(IndexingCommand cmd);
+    void runIndexingWorker(IndexingCommand cmd);
 
     /**
-     * Same as {@link ElasticSearchIndexing#index(org.nuxeo.elasticsearch.commands.IndexingCommand)} but use a bulk
-     * request.
+     * Same as {@link ElasticSearchIndexing#runIndexingWorker(org.nuxeo.elasticsearch.commands.IndexingCommand)} but use
+     * a bulk request.
      *
      * @since 7.1
      */
-    void index(List<IndexingCommand> cmds);
+    void runIndexingWorker(List<IndexingCommand> cmds);
 
     /**
      * Reindex documents matching the NXQL query,
      *
      * @since 7.1
      */
-    void reindex(String repositoryName, String nxql);
+    void runReindexingWorker(String repositoryName, String nxql);
 
     /**
      * {true} if a command has already been submitted for indexing.
@@ -67,8 +68,8 @@ public interface ElasticSearchIndexing {
     /**
      * Process the {@link IndexingCommand}.
      * <p>
-     * Send indexing command to Elasticsearch, if the command is synchronous the index is refreshed so the
-     * document is searchable immediately. Recursive indexing is not taken in account except for deletion. This is not a
+     * Send indexing command to Elasticsearch, if the command is synchronous the index is refreshed so the document is
+     * searchable immediately. Recursive indexing is not taken in account except for deletion. This is not a
      * transactional operation, a rollback will not discard the executed commands.
      * </p>
      *
@@ -83,6 +84,5 @@ public interface ElasticSearchIndexing {
      * @since 7.1
      */
     void indexNonRecursive(List<IndexingCommand> cmds);
-
 
 }

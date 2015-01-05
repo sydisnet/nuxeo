@@ -102,12 +102,12 @@ public class ElasticSearchManager {
     public void startReindexAll() {
         log.warn("Re-indexing the entire repository: " + repositoryName);
         esa.dropAndInitRepositoryIndex(repositoryName);
-        esi.reindex(repositoryName, "SELECT ecm:uuid FROM Document");
+        esi.runReindexingWorker(repositoryName, "SELECT ecm:uuid FROM Document");
     }
 
     public void startReindexNxql() {
         log.warn(String.format("Re-indexing from a NXQL query: %s on repository: %s", getNxql(), repositoryName));
-        esi.reindex(repositoryName, getNxql());
+        esi.runReindexingWorker(repositoryName, getNxql());
     }
 
     public void startReindexFrom() {
@@ -123,7 +123,7 @@ public class ElasticSearchManager {
                 log.warn(String.format("Re-indexing document: %s and its children on repository: %s", doc,
                         repositoryName));
                 IndexingCommand cmd = new IndexingCommand(doc, false, true);
-                esi.index(cmd);
+                esi.runIndexingWorker(cmd);
             }
         }
     }
