@@ -194,13 +194,6 @@ public class TestManualIndexing {
         doc = session.createDocument(doc);
         session.save();
 
-        // ask for async indexing
-        startCountingCommandProcessed();
-        IndexingCommand cmd = new IndexingCommand(doc, false, false);
-        esi.index(cmd);
-        esa.refresh();
-        assertNumberOfCommandProcessed(0);
-
         // only one doc should be indexed for now
         SearchResponse searchResponse = esa.getClient().prepareSearch(IDX_NAME).setSearchType(
                 SearchType.DFS_QUERY_THEN_FETCH).setFrom(0).setSize(60).execute().actionGet();
@@ -213,6 +206,13 @@ public class TestManualIndexing {
 
         // now commit and wait for post commit indexing
         TransactionHelper.commitOrRollbackTransaction();
+        // ask for async indexing
+        startCountingCommandProcessed();
+        IndexingCommand cmd = new IndexingCommand(doc, false, false);
+        esi.runIndexingWorker(cmd);
+        esa.refresh();
+        assertNumberOfCommandProcessed(0);
+
         waitForIndexing();
         assertNumberOfCommandProcessed(1);
 

@@ -43,9 +43,9 @@ import org.nuxeo.ecm.core.event.impl.EventContextImpl;
 import org.nuxeo.elasticsearch.listener.EventConstants;
 
 /**
- * Holds information about what type of indexing operation must be processed.
- * IndexingCommands are create "on the fly" via a Synchronous event listener and at commit time the system will merge
- * the commands and generate events for the sync commands.
+ * Holds information about what type of indexing operation must be processed. IndexingCommands are create "on the fly"
+ * via a Synchronous event listener and at post commit time the system will merge the commands and execute worker to
+ * process commands.
  *
  * @author <a href="mailto:tdelprat@nuxeo.com">Tiry</a>
  */
