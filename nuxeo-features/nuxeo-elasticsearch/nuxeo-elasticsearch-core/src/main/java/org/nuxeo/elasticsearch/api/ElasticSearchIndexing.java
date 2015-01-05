@@ -45,7 +45,7 @@ public interface ElasticSearchIndexing {
 
     /**
      * Same as {@link ElasticSearchIndexing#runIndexingWorker(org.nuxeo.elasticsearch.commands.IndexingCommand)} but use
-     * a bulk request.
+     * a bulk request to process a list of commands.
      *
      * @since 7.1
      */

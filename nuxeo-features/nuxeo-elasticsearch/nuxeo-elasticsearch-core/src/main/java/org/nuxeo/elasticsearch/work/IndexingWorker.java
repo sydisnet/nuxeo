@@ -19,10 +19,8 @@ package org.nuxeo.elasticsearch.work;
 
 import java.util.List;
 
-import org.elasticsearch.common.util.concurrent.EsAbortPolicy;
 import org.nuxeo.ecm.core.work.api.Work;
 import org.nuxeo.ecm.core.work.api.WorkManager;
-import org.nuxeo.elasticsearch.api.ElasticSearchAdmin;
 import org.nuxeo.elasticsearch.api.ElasticSearchIndexing;
 import org.nuxeo.elasticsearch.commands.IndexingCommand;
 import org.nuxeo.runtime.api.Framework;
@@ -36,18 +34,13 @@ public class IndexingWorker extends AbstractIndexingWorker implements Work {
 
     private static final long serialVersionUID = 1L;
 
-    public IndexingWorker(IndexingCommand cmd) {
-        super(cmd);
-    }
-
     public IndexingWorker(String repositoryName, List<IndexingCommand> cmds) {
         super(repositoryName, cmds);
     }
 
     @Override
     public String getTitle() {
-        String title = " ElasticSearch indexing for docs: " + getCmdsDigest();
-        return title;
+        return " ElasticSearch indexing for docs: " + getCmdsDigest();
     }
 
     protected boolean needRecurse(IndexingCommand cmd) {

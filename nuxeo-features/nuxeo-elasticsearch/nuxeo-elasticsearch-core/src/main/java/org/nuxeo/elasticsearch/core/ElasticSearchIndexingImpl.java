@@ -129,6 +129,7 @@ public class ElasticSearchIndexingImpl implements ElasticSearchIndexing {
             esa.totalCommandRunning.addAndGet(-nbCommands);
         }
         esa.totalCommandProcessed.addAndGet(nbCommands);
+        refreshIfNeeded(cmds);
     }
 
     void processBulkDeleteCommands(List<IndexingCommand> cmds) {
@@ -177,6 +178,21 @@ public class ElasticSearchIndexingImpl implements ElasticSearchIndexing {
         }
     }
 
+    protected void refreshIfNeeded(List<IndexingCommand> cmds) {
+        for (IndexingCommand cmd : cmds) {
+            if (refreshIfNeeded(cmd))
+                return;
+        }
+    }
+
+    private boolean refreshIfNeeded(IndexingCommand cmd) {
+        if (cmd.isSync()) {
+            esa.refresh();
+            return true;
+        }
+        return false;
+    }
+
     @Override
     public void indexNonRecursive(IndexingCommand cmd) throws ClientException {
         esa.totalCommandRunning.incrementAndGet();
@@ -199,6 +215,7 @@ public class ElasticSearchIndexingImpl implements ElasticSearchIndexing {
                 esa.totalCommandRunning.decrementAndGet();
             }
         }
+        refreshIfNeeded(cmd);
     }
 
     void processIndexCommand(IndexingCommand cmd) {
@@ -219,7 +236,8 @@ public class ElasticSearchIndexingImpl implements ElasticSearchIndexing {
         }
         if (log.isDebugEnabled()) {
             log.debug(String.format("Index request: curl -XPUT 'http://localhost:9200/%s/%s/%s' -d '%s'",
-                    esa.getRepositoryIndex(cmd.getRepositoryName()), DOC_TYPE, cmd.getDocId(), request.request().toString()));
+                    esa.getRepositoryIndex(cmd.getRepositoryName()), DOC_TYPE, cmd.getDocId(),
+                    request.request().toString()));
         }
         request.execute().actionGet();
     }
@@ -305,8 +323,8 @@ public class ElasticSearchIndexingImpl implements ElasticSearchIndexing {
             XContentBuilder builder = jsonBuilder();
             JsonGenerator jsonGen = factory.createJsonGenerator(builder.stream());
             JsonESDocumentWriter.writeESDocument(jsonGen, doc, cmd.getSchemas(), null);
-            return esa.getClient().prepareIndex(esa.getRepositoryIndex(cmd.getRepositoryName()), DOC_TYPE, cmd.getDocId()).setSource(
-                    builder);
+            return esa.getClient().prepareIndex(esa.getRepositoryIndex(cmd.getRepositoryName()), DOC_TYPE,
+                    cmd.getDocId()).setSource(builder);
         } catch (IOException e) {
             throw new ClientException("Unable to create index request for Document " + cmd.getDocId(), e);
         }

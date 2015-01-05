@@ -52,7 +52,6 @@ public abstract class AbstractIndexingWorker extends BaseIndexingWorker {
         }
     }
 
-
     @Override
     public void doWork() {
         initSession();
