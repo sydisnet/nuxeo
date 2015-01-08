@@ -32,6 +32,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.index.query.QueryBuilder;
+import org.nuxeo.ecm.automation.jaxrs.io.documents.JsonESDocumentWriter;
 import org.nuxeo.ecm.core.api.ClientException;
 import org.nuxeo.ecm.core.api.CoreSession;
 import org.nuxeo.ecm.core.api.DocumentModelList;
@@ -46,6 +47,7 @@ import org.nuxeo.elasticsearch.api.ElasticSearchIndexing;
 import org.nuxeo.elasticsearch.api.ElasticSearchService;
 import org.nuxeo.elasticsearch.api.EsResult;
 import org.nuxeo.elasticsearch.commands.IndexingCommand;
+import org.nuxeo.elasticsearch.config.ElasticSearchDocWriterDescriptor;
 import org.nuxeo.elasticsearch.config.ElasticSearchIndexConfig;
 import org.nuxeo.elasticsearch.config.ElasticSearchLocalConfig;
 import org.nuxeo.elasticsearch.config.ElasticSearchRemoteConfig;
@@ -72,6 +74,8 @@ public class ElasticSearchComponent extends DefaultComponent implements ElasticS
     private static final String EP_LOCAL = "elasticSearchLocal";
 
     private static final String EP_INDEX = "elasticSearchIndex";
+    
+    private static final String EP_DOC_WRITER = "elasticSearchDocWriter";
 
     private static final Log log = LogFactory.getLog(ElasticSearchComponent.class);
 
@@ -95,6 +99,8 @@ public class ElasticSearchComponent extends DefaultComponent implements ElasticS
     private ElasticSearchIndexingImpl esi;
 
     private ElasticsearchServiceImpl ess;
+    
+    protected JsonESDocumentWriter jsonESDocumentWriter;
 
     // Nuxeo Component impl ======================================é=============
     @Override
@@ -135,10 +141,18 @@ public class ElasticSearchComponent extends DefaultComponent implements ElasticS
                 indexConfig.remove(idx.getName());
             }
             break;
+        case EP_DOC_WRITER:
+            ElasticSearchDocWriterDescriptor writerDescriptor = (ElasticSearchDocWriterDescriptor) contribution;
+            try {
+                jsonESDocumentWriter = writerDescriptor.getKlass().newInstance();
+            } catch (IllegalAccessException | InstantiationException e) {
+                log.error("Can not instantiate jsonESDocumentWriter from " + writerDescriptor.getKlass());
+                throw new RuntimeException(e);
+            }
+            break;
         default:
             throw new IllegalStateException("Invalid EP: " + extensionPoint);
         }
-
     }
 
     @Override
@@ -148,7 +162,7 @@ public class ElasticSearchComponent extends DefaultComponent implements ElasticS
             return;
         }
         esa = new ElasticSearchAdminImpl(localConfig, remoteConfig, indexConfig);
-        esi = new ElasticSearchIndexingImpl(esa);
+        esi = new ElasticSearchIndexingImpl(esa, jsonESDocumentWriter);
         ess = new ElasticsearchServiceImpl(esa);
         processStackedCommands();
     }
