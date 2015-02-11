@@ -2977,7 +2977,13 @@
                   <widget>initialLayoutName</widget>
                 </row>
                 <row>
+                  <widget>initialLayoutNameDemoPreview</widget>
+                </row>
+                <row>
                   <widget>toggledLayoutName</widget>
+                </row>
+                <row>
+                  <widget>toggledLayoutNameDemoPreview</widget>
                 </row>
                 <row>
                   <widget>styleClass</widget>
@@ -3036,8 +3042,33 @@
                 <fields>
                   <field>initialLayoutName</field>
                 </fields>
+                <widgetModes>
+                  <mode value="edit_demo_preview">hidden</mode>
+                </widgetModes>
                 <properties mode="any">
                   <property name="resourceName">layouts</property>
+                  <property name="required">true</property>
+                </properties>
+              </widget>
+              <widget name="initialLayoutNameDemoPreview" type="text">
+                <labels>
+                  <label mode="any">Layout(s)</label>
+                </labels>
+                <helpLabels>
+                  <label mode="any">
+                    The layout to display before toggling the
+                    mode. Also accepts a list of multiple layout names,
+                    separated by commas.
+                  </label>
+                </helpLabels>
+                <fields>
+                  <field>initialLayoutName</field>
+                </fields>
+                <widgetModes>
+                  <mode value="any">hidden</mode>
+                  <mode value="edit_demo_preview">view</mode>
+                </widgetModes>
+                <properties mode="any">
                   <property name="required">true</property>
                 </properties>
               </widget>
@@ -3056,9 +3087,32 @@
                 <fields>
                   <field>toggledLayoutName</field>
                 </fields>
+                <widgetModes>
+                  <mode value="edit_demo_preview">hidden</mode>
+                </widgetModes>
                 <properties mode="any">
                   <property name="resourceName">layouts</property>
                 </properties>
+              </widget>
+              <widget name="toggledLayoutNameDemoPreview" type="text">
+                <labels>
+                  <label mode="any">Toggled layout(s)</label>
+                </labels>
+                <helpLabels>
+                  <label mode="any">
+                    The layout to display after toggling the
+                    mode. Also accepts a list of multiple layout names,
+                    separated by commas. If not filled, defaults to the initial
+                    layout name(s).
+                  </label>
+                </helpLabels>
+                <fields>
+                  <field>toggledLayoutName</field>
+                </fields>
+                <widgetModes>
+                  <mode value="any">hidden</mode>
+                  <mode value="edit_demo_preview">view</mode>
+                </widgetModes>
               </widget>
               <widget name="template" type="selectOneResource">
                 <labels>
@@ -3074,6 +3128,9 @@
                 <fields>
                   <field>template</field>
                 </fields>
+                <widgetModes>
+                  <mode value="edit_demo_preview">hidden</mode>
+                </widgetModes>
                 <properties mode="any">
                   <property name="resourceName">layout_templates</property>
                 </properties>
@@ -3102,11 +3159,11 @@
                     deciding whether the toggle button should be displayed or
                     not. Defaults to an EL expression checking permission
                     'Write' on the document. Examples: false,
-                    #{nxd:hasPermission(value, 'Write') and
+                    #{'#{'}nxd:hasPermission(value, 'Write') and
                     currentUser.isMemberOf('togglers_groups')}.
                     Default
                     expression used:
-                    #{webActions.checkFilter('canToggleLayoutToEditMode')}
+                    #{'#{'}webActions.checkFilter('canToggleLayoutToEditMode')}
                   </label>
                 </helpLabels>
                 <fields>
@@ -3452,11 +3509,11 @@
                     deciding whether the toggle button should be displayed or
                     not. Defaults to an EL expression checking permission
                     'Write' on the document. Examples: false,
-                    #{nxd:hasPermission(value, 'Write') and
+                    #{'#{'}nxd:hasPermission(value, 'Write') and
                     currentUser.isMemberOf('togglers_groups')}.
                     Default
                     expression used:
-                    #{webActions.checkFilter('canToggleLayoutToEditMode')}
+                    #{'#{'}webActions.checkFilter('canToggleLayoutToEditMode')}
                   </label>
                 </helpLabels>
                 <fields>
@@ -3735,11 +3792,11 @@
                     deciding whether the toggle button should be displayed or
                     not. Defaults to an EL expression checking permission
                     'Write' on the document. Examples: false,
-                    #{nxd:hasPermission(value, 'Write') and
+                    #{'#{'}nxd:hasPermission(value, 'Write') and
                     currentUser.isMemberOf('togglers_groups')}.
                     Default
                     expression used:
-                    #{webActions.checkFilter('canToggleLayoutToEditMode')}
+                    #{'#{'}webActions.checkFilter('canToggleLayoutToEditMode')}
                   </label>
                 </helpLabels>
                 <fields>
