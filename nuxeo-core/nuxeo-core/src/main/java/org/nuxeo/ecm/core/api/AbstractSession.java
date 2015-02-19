@@ -63,6 +63,7 @@ import org.nuxeo.ecm.core.api.event.DocumentEventCategories;
 import org.nuxeo.ecm.core.api.event.DocumentEventTypes;
 import org.nuxeo.ecm.core.api.facet.VersioningDocument;
 import org.nuxeo.ecm.core.api.impl.DocsQueryProviderDef;
+import org.nuxeo.ecm.core.api.impl.DocumentModelChildrenIterator;
 import org.nuxeo.ecm.core.api.impl.DocumentModelIteratorImpl;
 import org.nuxeo.ecm.core.api.impl.DocumentModelListImpl;
 import org.nuxeo.ecm.core.api.impl.FacetFilter;
@@ -1241,10 +1242,8 @@ public abstract class AbstractSession implements CoreSession, OperationHandler,
     @Override
     public DocumentModelIterator getChildrenIterator(DocumentRef parent,
             String type, String perm, Filter filter) throws ClientException {
-        DocsQueryProviderDef def = new DocsQueryProviderDef(
-                DocsQueryProviderDef.DefType.TYPE_CHILDREN);
-        def.setParent(parent);
-        return new DocumentModelIteratorImpl(this, 15, def, type, perm, filter);
+        // perm unused, kept for API compat
+        return new DocumentModelChildrenIterator(this, parent, type, filter);
     }
 
     @Override
