@@ -21,7 +21,8 @@ package org.nuxeo.ecm.web.resources.api;
  */
 public enum ResourceType {
 
-    any, unknown, css, js, bundle;
+    // XXX
+    any, unknown, css, js, bundle, html;
 
     public static final ResourceType parse(String type) {
         for (ResourceType item : values()) {

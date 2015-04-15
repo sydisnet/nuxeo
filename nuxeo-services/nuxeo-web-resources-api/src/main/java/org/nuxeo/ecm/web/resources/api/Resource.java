@@ -29,6 +29,7 @@ public interface Resource extends Serializable {
 
     String getName();
 
+    // FIXME to remove, keep a simple String marker for different use cases
     ResourceType getType();
 
     String getPath();
