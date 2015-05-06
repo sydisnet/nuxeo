@@ -49,6 +49,7 @@ import org.nuxeo.ecm.core.api.ClientException;
 import org.nuxeo.ecm.core.api.CoreSession;
 import org.nuxeo.ecm.core.api.DocumentLocation;
 import org.nuxeo.ecm.core.api.DocumentModel;
+import org.nuxeo.ecm.core.api.blobholder.BlobHolder;
 import org.nuxeo.ecm.core.api.event.CoreEventConstants;
 import org.nuxeo.ecm.core.api.facet.VersioningDocument;
 import org.nuxeo.ecm.core.api.pathsegment.PathSegmentService;
@@ -468,4 +469,20 @@ public class DocumentActionsBean extends InputController implements DocumentActi
         }
     }
 
+    public String getLiveConnectEditLink(DocumentModel doc) throws ClientException {
+        BlobHolder bh = doc.getAdapter(BlobHolder.class);
+        if (bh == null || bh.getBlob() == null) {
+            return null;
+        }
+        BlobManager blobManager = Framework.getService(BlobManager.class);
+        try {
+            URI uri = blobManager.getURI(bh.getBlob(), UsageHint.EDIT);
+            if (uri != null) {
+                return uri.toString();
+            }
+        } catch (IOException e) {
+            //
+        }
+        return null;
+    }
 }

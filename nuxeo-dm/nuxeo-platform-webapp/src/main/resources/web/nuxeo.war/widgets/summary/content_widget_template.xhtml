@@ -42,6 +42,8 @@
     <c:set var="blobLength" value="#{currentDocumentAsBlobHolder.blob.length}" />
     <c:set var="fileUrl"
            value="#{nxd:fileUrl('downloadFile', currentDocument, 'blobholder:0', currentDocumentAsBlobHolder.blob.filename)}" />
+    <c:set var="liveConnectEditLink"
+         value="#{documentActions.getLiveConnectEditLink(currentDocument)}" />
     <div class="dropzone dropContent" context="mainBlob" id="mainBlobDropZone">
     <table class="smallTable">
       <tbody>
@@ -68,6 +70,12 @@
             <nxl:widgetType name="documentActions"
               widgetProperty_category="DRIVE_EDIT" value="#{currentDocument}"
               mode="view" actionsDisplay="icons" overallDisplay="horizontal_block" />
+            <h:outputLink value="#{liveConnectEditLink}"
+                        rendered="#{liveConnectEditLink != null}">
+              <h:graphicImage value="/icons/application_form_edit.png"
+                              alt="#{messages['label.document.directEdit']}"
+                              title="#{messages['label.document.directEdit']}"/>
+            </h:outputLink>
             <nxu:methodResult name="editable"
               value="#{liveEditHelper.isDocumentLiveEditable(currentDocument, 'file', 'content')}">
               <h:outputLink value="#{nxd:liveEditUrl(currentDocument, 'file', 'content', 'filename')}"
