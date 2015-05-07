@@ -19,11 +19,15 @@
 package org.nuxeo.ecm.platform.oauth2.providers;
 
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.nuxeo.ecm.core.api.ClientException;
@@ -33,38 +37,68 @@ import org.nuxeo.ecm.directory.BaseSession;
 import org.nuxeo.ecm.directory.Session;
 import org.nuxeo.ecm.directory.api.DirectoryService;
 import org.nuxeo.runtime.api.Framework;
+import org.nuxeo.runtime.model.ComponentContext;
+import org.nuxeo.runtime.model.ComponentInstance;
 import org.nuxeo.runtime.model.DefaultComponent;
 
+/**
+ * Implementation of the {@link OAuth2ServiceProviderRegistry}. The storage backend is a SQL Directory.
+ */
 public class OAuth2ServiceProviderRegistryImpl extends DefaultComponent implements OAuth2ServiceProviderRegistry {
 
     protected static final Log log = LogFactory.getLog(OAuth2ServiceProviderRegistryImpl.class);
 
+    public static final String PROVIDER_EP = "providers";
+
     public static final String DIRECTORY_NAME = "oauth2ServiceProviders";
 
-    public NuxeoOAuth2ServiceProvider getProvider(String serviceName) {
+    public static final String SCHEMA = "oauth2ServiceProvider";
+
+    protected OAuth2ServiceProviderContributionRegistry registry = new OAuth2ServiceProviderContributionRegistry();
+
+    protected Map<String, OAuth2ServiceProvider> providers = new HashMap<String, OAuth2ServiceProvider>();
+
+    @Override
+    public OAuth2ServiceProvider getProvider(String serviceName) {
         try {
-            NuxeoOAuth2ServiceProvider provider = getEntry(serviceName, null);
-            return provider;
+            if (StringUtils.isBlank(serviceName)) {
+                log.warn("Can not find provider without a serviceName!");
+                return null;
+            }
+
+            Map<String, Serializable> filter = new HashMap<String, Serializable>();
+            filter.put("serviceName", serviceName);
+
+            List<OAuth2ServiceProvider> providers = queryProviders(filter, 1);
+            return providers.isEmpty() ? null : providers.get(0);
         } catch (ClientException e) {
             log.error("Unable to read provider from Directory backend", e);
             return null;
         }
     }
 
-    public NuxeoOAuth2ServiceProvider addProvider(String serviceName, String tokenServerURL,
+    @Override
+    public OAuth2ServiceProvider addProvider(String serviceName, String tokenServerURL,
             String authorizationServerURL, String clientId, String clientSecret, List<String> scopes) {
 
-        NuxeoOAuth2ServiceProvider provider = new NuxeoOAuth2ServiceProvider(null, serviceName, tokenServerURL,
-                authorizationServerURL, clientId, clientSecret, scopes);
         DirectoryService ds = Framework.getService(DirectoryService.class);
         Session session = null;
 
         try {
             session = ds.open(DIRECTORY_NAME);
-            DocumentModel creationEntry = BaseSession.createEntryModel(null, NuxeoOAuth2ServiceProvider.SCHEMA, null,
-                    null);
+            DocumentModel creationEntry = BaseSession.createEntryModel(null, SCHEMA, null, null);
             DocumentModel entry = session.createEntry(creationEntry);
-            provider.asDocumentModel(entry);
+            entry.setProperty(SCHEMA, "serviceName", serviceName);
+            entry.setProperty(SCHEMA, "authorizationServerURL", authorizationServerURL);
+            entry.setProperty(SCHEMA, "tokenServerURL", tokenServerURL);
+            entry.setProperty(SCHEMA, "clientId", clientId);
+            entry.setProperty(SCHEMA, "clientSecret", clientSecret);
+            entry.setProperty(SCHEMA, "scopes", StringUtils.join(scopes, ","));
+            if (clientId == null || clientSecret == null) {
+                log.info("OAuth2 provider for " + serviceName
+                    + " is disabled because clientId and/or clientSecret are empty");
+                entry.setProperty(SCHEMA, "enabled", false);
+            }
             session.updateEntry(entry);
 
             return getProvider(serviceName);
@@ -75,48 +109,84 @@ public class OAuth2ServiceProviderRegistryImpl extends DefaultComponent implemen
         }
     }
 
-    protected String preProcessServiceName(String serviceName) {
-        if (serviceName != null && serviceName.trim().isEmpty()) {
-            return null;
-        }
-        return serviceName;
+    @Override
+    public List<OAuth2ServiceProvider> listProviders() {
+        Map<String, Serializable> filter = Collections.emptyMap();
+        return queryProviders(filter, 0);
     }
 
-    protected NuxeoOAuth2ServiceProvider getEntry(String serviceName, Set<String> ftFilter) throws ClientException {
+    protected List<OAuth2ServiceProvider> queryProviders(Map<String, Serializable> filter, int limit) {
 
-        // normalize "empty" service name
-        serviceName = preProcessServiceName(serviceName);
+        List<OAuth2ServiceProvider> result = new ArrayList<>();
 
-        if (serviceName == null) {
-            log.warn("Can not find provider with null serviceName !");
-            return null;
-        }
-
-        DirectoryService ds = Framework.getService(DirectoryService.class);
-        Session session = null;
-        NuxeoOAuth2ServiceProvider provider = null;
         try {
-            session = ds.open(DIRECTORY_NAME);
-            Map<String, Serializable> filter = new HashMap<String, Serializable>();
-            if (serviceName != null) {
-                filter.put("serviceName", serviceName);
+            DirectoryService ds = Framework.getService(DirectoryService.class);
+            Session session = null;
+            try {
+                session = ds.open(DIRECTORY_NAME);
+                Set<String> fulltext = Collections.emptySet();
+                Map<String, String> orderBy = Collections.emptyMap();
+                DocumentModelList entries = session.query(filter, fulltext, orderBy, true, limit, 0);
+                for (DocumentModel entry : entries) {
+                    result.add(buildProvider(entry));
+                }
+            } finally {
+                if (session != null) {
+                    session.close();
+                }
             }
-            DocumentModelList entries = session.query(filter, ftFilter);
-            if (entries == null || entries.size() == 0) {
-                return null;
-            }
-            if (entries.size() > 1) {
-                log.warn("Found several entries for  serviceName=" + serviceName);
-            }
-            // XXX do better than that !
-            DocumentModel entry = entries.get(0);
-            provider = NuxeoOAuth2ServiceProvider.createFromDirectoryEntry(entry);
-            return provider;
-        } finally {
-            if (session != null) {
-                session.close();
-            }
+        } catch (ClientException e) {
+            log.error("Error while fetching provider directory", e);
+        }
+        return result;
+    }
+
+    protected OAuth2ServiceProvider buildProvider(DocumentModel entry) throws ClientException {
+        OAuth2ServiceProvider provider = registry.getProvider(entry.getName());
+        if (provider == null) {
+            provider = new NuxeoOAuth2ServiceProvider();
+        }
+
+        provider.setId((Long) entry.getProperty(SCHEMA, "id"));
+        provider.setAuthorizationServerURL((String) entry.getProperty(SCHEMA, "authorizationServerURL"));
+        provider.setTokenServerURL((String) entry.getProperty(SCHEMA, "tokenServerURL"));
+        provider.setServiceName((String) entry.getProperty(SCHEMA, "serviceName"));
+        provider.setClientId((String) entry.getProperty(SCHEMA, "clientId"));
+        provider.setClientSecret((String) entry.getProperty(SCHEMA, "clientSecret"));
+        String scopes = (String) entry.getProperty(SCHEMA, "scopes");
+        provider.setScopes(scopes.split(","));
+        provider.setEnabled((Boolean) entry.getProperty(SCHEMA, "enabled"));
+        return provider;
+    }
+
+    @Override
+    public void registerContribution(Object contribution,
+        String extensionPoint, ComponentInstance contributor) {
+        if (PROVIDER_EP.equals(extensionPoint)) {
+            OAuth2ServiceProviderDescriptor provider = (OAuth2ServiceProviderDescriptor) contribution;
+            log.info("OAuth2 provider for " + provider.getName() + " will be registered at application startup");
+            // delay registration because data sources may not be available
+            // at this point
+            registry.addContribution(provider);
         }
     }
 
+    @Override
+    public void applicationStarted(ComponentContext context) {
+        super.applicationStarted(context);
+        registerCustomProviders();
+    }
+
+    protected void registerCustomProviders() {
+        for (OAuth2ServiceProviderDescriptor provider : registry.getContribs()) {
+            if (getProvider(provider.getName()) == null) {
+                addProvider(provider.getName(), provider.getTokenServerURL(),
+                    provider.getAuthorizationServerURL(), provider.getClientId(), provider.getClientSecret(),
+                    Arrays.asList(provider.getScopes()));
+            } else {
+                log.warn("Provider " + provider.getName()
+                    + " is already in the Database, XML contribution  won't overwrite it");
+            }
+        }
+    }
 }
